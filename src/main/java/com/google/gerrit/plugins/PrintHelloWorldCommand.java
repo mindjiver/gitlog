@@ -16,11 +16,22 @@ package com.google.gerrit.plugins;
 
 import com.google.gerrit.sshd.SshCommand;
 
+import org.kohsuke.args4j.Argument;
+import org.kohsuke.args4j.Option;
+
 public final class PrintHelloWorldCommand extends SshCommand {
+
+  @Argument(usage = "name of user")
+  private String name = "world";
+
+  @Option(name = "--french", usage = "output in French?")
+  private boolean french = false;
+
   @Override
   public void run() throws UnloggedFailure, Failure, Exception {
+    final String greeting = (french ? "Bonjour " : "Hello ");
     // Note the use of '\n' instead of println to keep platform-agnostic line
     // terminator.
-    stdout.print("Hello world!\n");
+    stdout.print(greeting + name + "!\n");
   }
 }
