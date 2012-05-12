@@ -20,17 +20,17 @@ limitations under the License.
   <modelVersion>4.0.0</modelVersion>
 
   <groupId>com.google.gerrit.plugins</groupId>
-  <artifactId>helloworld</artifactId>
+  <artifactId>gitlog</artifactId>
   <packaging>jar</packaging>
-  <version>0.1</version>
+  <version>0.1-SNAPSHOT</version>
   <properties>
-    <gerrit-version>2.4-rc0-136-g7bf1f93</gerrit-version>
+    <gerrit-version>2.5-SNAPSHOT</gerrit-version>
   </properties>
-  <name>Hello World Gerrit Plugin</name>
+  <name>Git log Gerrit Plugin</name>
   <url>https://gerrit-review.googlesource.com</url>
 
   <description>
-    A hello world-type plugin example for Gerrit
+    A Git log SSH plugin for Gerrit
   </description>
 
   <build>
@@ -50,8 +50,8 @@ limitations under the License.
         <configuration>
           <archive>
             <manifestEntries>
-              <Gerrit-Plugin>helloworld</Gerrit-Plugin>
-              <Gerrit-SshModule>com.google.gerrit.plugins.HelloWorldCommandModule</Gerrit-SshModule>
+              <Gerrit-Plugin>gitlog</Gerrit-Plugin>
+              <Gerrit-SshModule>com.google.gerrit.plugins.GitLogCommandModule</Gerrit-SshModule>
               <Gerrit-Version>${gerrit-version}</Gerrit-Version>
             </manifestEntries>
           </archive>
