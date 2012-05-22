@@ -14,8 +14,15 @@
 
 package com.google.gerrit.plugins;
 
+import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
 import org.eclipse.jgit.api.Git;
+import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.api.LogCommand;
 import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.PersonIdent;
@@ -60,44 +67,65 @@ public final class GitLogCommand extends SshCommand {
       return;
     }
        
-    Project.NameKey repo = Project.NameKey.parse(name);
-    Repository git = null;
- 
-    try {
-      git = repoManager.openRepository(repo);
-    } catch (RepositoryNotFoundException e) {
-      stdout.print("No repository called '" + repo.toString() + "' exists.\n");
+    if (this.from == null || this.to == null) {
+      stdout.print("Nothing to show log between.\n");
       return;
     }
-   
-    git = repoManager.openRepository(repo);
     
-    Git g = Git.open(git.getDirectory());   
-    LogCommand log = g.log();    
+    Project.NameKey repo = Project.NameKey.parse(name);
+    Repository git = null;
+     
+    try {
+      git = repoManager.openRepository(repo);
 
-    if (this.from == null || this.to == null) {
-      log.all();
-    } else {
-      log.addRange(ObjectId.fromString(this.from),
-            ObjectId.fromString(this.to));
-    }
+      Git g = Git.open(git.getDirectory());   
+      Repository r = g.getRepository();
+      
+      Map<String, Ref> refs = git.getAllRefs();
+      Map<String, ObjectId> list = new HashMap<String, ObjectId>();
+      
+      LogCommand log = g.log();    
 
-    for(RevCommit rev: log.call()) {
-      PersonIdent committer = rev.getCommitterIdent();
-      String committer_name = committer.getName();
-      String email = committer.getEmailAddress();
-      String sha1 = rev.name();
-      String comment = rev.getFullMessage();
-      Date date = new Date(rev.getCommitTime());      
-        
-      // serialize and send out on wire.
-      if (this.format == OutputFormat.TEXT) {
-        String msg = "commit " + sha1 + "\n";
-        msg += "Author: " + committer_name + " " + email + "\n";
-        msg += "Date: " + date.toString() + "\n\n";
-        msg += comment + "\n";
-        stdout.print(msg);
+      list.put(this.from, null);
+      list.put(this.to, null);
+      
+      for(String s: list.keySet()) {
+        // not really a proper sha1 check here :]
+        if (s.length() != 40) {
+          if (! refs.containsKey(s)) {
+            stdout.print(s + " does not point to a valid git reference.\n");
+            return;
+          } else {
+            list.put(s, refs.get(s).getObjectId());
+            }
+        } else {
+          list.put(s, ObjectId.fromString(s));
+        }
+          
       }
-    }
+
+      log.addRange(list.get(this.from), list.get(this.to));
+        
+      try {
+        for(RevCommit rev: log.call()) {
+          
+          PersonIdent author = rev.getAuthorIdent();
+          Date date = new Date(rev.getCommitTime());      
+          
+          // serialize and send out on wire.
+          if (this.format == OutputFormat.TEXT) {
+            String msg = "commit " + rev.name() + "\n";
+            msg += "Author: " + author.getName() + " " + author.getEmailAddress() + "\n";
+            msg += "Date: " + date.toString() + "\n\n";
+            msg += rev.getFullMessage() + "\n";
+            stdout.print(msg);
+          }
+        }
+      } finally {
+        git.close();
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+    }    
   }
 }
