@@ -1,0 +1,4 @@
+Simple git log plugin for Gerrit.
+
+Gerrit 2.5-SNAPSHOT has support for plugins, this is my little attempt
+of working on a a "git log" plugin until it is ready to be shared.
