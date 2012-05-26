@@ -19,17 +19,17 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 import org.eclipse.jgit.api.Git;
-import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.api.LogCommand;
+import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.PersonIdent;
-import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.lib.Repository;
-import com.google.gerrit.sshd.SshCommand;
-import com.google.gerrit.server.git.GitRepositoryManager;
+import org.eclipse.jgit.revwalk.RevCommit;
 import com.google.gerrit.reviewdb.client.Project;
+import com.google.gerrit.server.git.GitRepositoryManager;
 import com.google.gerrit.server.query.change.QueryProcessor;
 import com.google.gerrit.server.query.change.QueryProcessor.OutputFormat;
+import com.google.gerrit.sshd.SshCommand;
 import com.google.gson.Gson;
 import com.google.inject.Inject;
 import org.kohsuke.args4j.Argument;
@@ -115,21 +115,22 @@ public final class GitLogCommand extends SshCommand {
         
         cmts.add(c);
       }
-        
-      // serialize and send out on wire.
+      
+      StringBuffer msg = new StringBuffer();
+
       if (this.format == OutputFormat.TEXT) {
         for (Map<String, String> c: cmts) {
-          String msg = "commit " + c.get("commit") + "\n";
-          msg += "Author: " + c.get("author") + " " + c.get("email") + "\n";
-          msg += "Date: " + c.get("date") + "\n\n";
-          msg += c.get("message") + "\n";
-          stdout.print(msg);
+          msg.append("commit " + c.get("commit") + "\n");
+          msg.append("Author: " + c.get("author") + " " + c.get("email") + "\n");
+          msg.append("Date: " + c.get("date") + "\n\n");
+          msg.append(c.get("message") + "\n");
         }
       } else if (this.format == OutputFormat.JSON) {
         Gson gson = new Gson();
-        String msg = gson.toJson(cmts);
-        stdout.print(msg);
+        msg.append(gson.toJson(cmts));
       }
+
+      stdout.print(msg);
       
     } finally {
       git.close();
