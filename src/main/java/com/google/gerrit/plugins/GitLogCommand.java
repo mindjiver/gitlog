@@ -139,7 +139,7 @@ public final class GitLogCommand extends SshCommand {
         msg.append(gson.toJson(cmts));
       }
 
-      stdout.print(msg);
+      stdout.print(msg + "\n");
       
     } finally {
       repository.close();
