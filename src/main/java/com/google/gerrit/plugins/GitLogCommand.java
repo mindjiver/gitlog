@@ -99,12 +99,12 @@ public final class GitLogCommand extends SshCommand {
           list.put(s, ObjectId.fromString(s));
         } else {
           // not a SHA1, so lets try to find some other reference!
-          if (! refs.containsKey(s)) {
+          if (refs.containsKey(s)) {
+            list.put(s, refs.get(s).getObjectId());
+          } else {
             stdout.print(s + " does not point to a valid git reference.\n");
             return;
-          } else {
-            list.put(s, refs.get(s).getObjectId());
-            }
+          }
         } 
       }
 
