@@ -14,26 +14,23 @@
 
 package com.google.gerrit.plugins;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
-
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.api.LogCommand;
 import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.PersonIdent;
 import org.eclipse.jgit.revwalk.RevCommit;
-import org.eclipse.jgit.errors.RepositoryNotFoundException;
 import org.eclipse.jgit.lib.Repository;
 import com.google.gerrit.sshd.SshCommand;
 import com.google.gerrit.server.git.GitRepositoryManager;
 import com.google.gerrit.reviewdb.client.Project;
 import com.google.gerrit.server.query.change.QueryProcessor;
 import com.google.gerrit.server.query.change.QueryProcessor.OutputFormat;
+import com.google.gson.Gson;
 import com.google.inject.Inject;
 import org.kohsuke.args4j.Argument;
 import org.kohsuke.args4j.Option;
@@ -79,7 +76,6 @@ public final class GitLogCommand extends SshCommand {
       git = repoManager.openRepository(repo);
 
       Git g = Git.open(git.getDirectory());   
-      Repository r = g.getRepository();
       
       Map<String, Ref> refs = git.getAllRefs();
       Map<String, ObjectId> list = new HashMap<String, ObjectId>();
@@ -101,31 +97,42 @@ public final class GitLogCommand extends SshCommand {
         } else {
           list.put(s, ObjectId.fromString(s));
         }
-          
       }
 
-      log.addRange(list.get(this.from), list.get(this.to));
+      log.addRange(list.get(this.from), list.get(this.to));    
+      ArrayList<Map<String, String>> cmts = new ArrayList<Map<String, String>>();
+      
+      for(RevCommit rev: log.call()) {
+        PersonIdent author = rev.getAuthorIdent();
+        Date date = new Date(rev.getCommitTime());      
+          
+        Map<String, String> c = new HashMap<String, String>(); 
+        c.put("commit", rev.name());
+        c.put("author", author.getName());
+        c.put("email", author.getEmailAddress());
+        c.put("date", date.toString());
+        c.put("message",rev.getFullMessage());
         
-      try {
-        for(RevCommit rev: log.call()) {
-          
-          PersonIdent author = rev.getAuthorIdent();
-          Date date = new Date(rev.getCommitTime());      
-          
-          // serialize and send out on wire.
-          if (this.format == OutputFormat.TEXT) {
-            String msg = "commit " + rev.name() + "\n";
-            msg += "Author: " + author.getName() + " " + author.getEmailAddress() + "\n";
-            msg += "Date: " + date.toString() + "\n\n";
-            msg += rev.getFullMessage() + "\n";
-            stdout.print(msg);
-          }
-        }
-      } finally {
-        git.close();
+        cmts.add(c);
       }
-    } catch (Exception e) {
-      e.printStackTrace();
-    }    
+        
+      // serialize and send out on wire.
+      if (this.format == OutputFormat.TEXT) {
+        for (Map<String, String> c: cmts) {
+          String msg = "commit " + c.get("commit") + "\n";
+          msg += "Author: " + c.get("author") + " " + c.get("email") + "\n";
+          msg += "Date: " + c.get("date") + "\n\n";
+          msg += c.get("message") + "\n";
+          stdout.print(msg);
+        }
+      } else if (this.format == OutputFormat.JSON) {
+        Gson gson = new Gson();
+        String msg = gson.toJson(cmts);
+        stdout.print(msg);
+      }
+      
+    } finally {
+      git.close();
+    }
   }
 }
