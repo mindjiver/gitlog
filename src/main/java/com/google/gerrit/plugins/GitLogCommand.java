@@ -38,8 +38,8 @@ import org.kohsuke.args4j.Option;
 
 public final class GitLogCommand extends SshCommand {
 
-  @Argument(usage = "name of repository")
-  private String name = null;
+  @Argument(usage = "name of project")
+  private String project = null;
   
   @Option(name = "--from", usage = "commit to show history from")
   private String from = null;
@@ -60,8 +60,15 @@ public final class GitLogCommand extends SshCommand {
   @Override
   public void run() throws UnloggedFailure, Failure, Exception {
     
-    if (this.name == null) {
-      stdout.print("No repository specified.\n");
+    if (this.project == null) {
+      stdout.print("No project specified.\n");
+      return;
+    }
+    
+    Project.NameKey project = Project.NameKey.parse(this.project);
+    
+    if (! repoManager.list().contains(project)) {
+      stdout.print("No project called " + this.project + " exists.\n");
       return;
     }
        
@@ -69,24 +76,23 @@ public final class GitLogCommand extends SshCommand {
       stdout.print("Nothing to show log between.\n");
       return;
     }
-    
-    Project.NameKey repo = Project.NameKey.parse(name);
-    Repository git = null;
-     
-    Pattern sha1 = Pattern.compile("[0-9a-fA-F]{40}");
-        
-    try {
-      git = repoManager.openRepository(repo);
 
-      Git g = Git.open(git.getDirectory());   
+    Repository repository = null;
+    Git g = null;
+       
+    try {
+      repository = repoManager.openRepository(project);
+      g = Git.open(repository.getDirectory());   
       
-      Map<String, Ref> refs = git.getAllRefs();
+      Map<String, Ref> refs = repository.getAllRefs();
       Map<String, ObjectId> list = new HashMap<String, ObjectId>();
       
       LogCommand log = g.log();    
 
       list.put(this.from, null);
       list.put(this.to, null);
+
+      Pattern sha1 = Pattern.compile("[0-9a-fA-F]{40}");
       
       for(String s: list.keySet()) {
         if (sha1.matcher(s).matches()) {
@@ -136,7 +142,7 @@ public final class GitLogCommand extends SshCommand {
       stdout.print(msg);
       
     } finally {
-      git.close();
+      repository.close();
     }
   }
 }
