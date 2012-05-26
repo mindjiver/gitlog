@@ -18,6 +18,7 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.regex.Pattern;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.LogCommand;
 import org.eclipse.jgit.lib.Ref;
@@ -72,6 +73,8 @@ public final class GitLogCommand extends SshCommand {
     Project.NameKey repo = Project.NameKey.parse(name);
     Repository git = null;
      
+    Pattern sha1 = Pattern.compile("[0-9a-fA-F]{40}");
+        
     try {
       git = repoManager.openRepository(repo);
 
@@ -86,17 +89,17 @@ public final class GitLogCommand extends SshCommand {
       list.put(this.to, null);
       
       for(String s: list.keySet()) {
-        // not really a proper sha1 check here :]
-        if (s.length() != 40) {
+        if (sha1.matcher(s).matches()) {
+          list.put(s, ObjectId.fromString(s));
+        } else {
+          // not a SHA1, so lets try to find some other reference!
           if (! refs.containsKey(s)) {
             stdout.print(s + " does not point to a valid git reference.\n");
             return;
           } else {
             list.put(s, refs.get(s).getObjectId());
             }
-        } else {
-          list.put(s, ObjectId.fromString(s));
-        }
+        } 
       }
 
       log.addRange(list.get(this.from), list.get(this.to));    
