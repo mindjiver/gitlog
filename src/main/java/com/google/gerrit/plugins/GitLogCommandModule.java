@@ -17,8 +17,8 @@ package com.google.gerrit.plugins;
 import com.google.gerrit.sshd.PluginCommandModule;
 
 public class GitLogCommandModule extends PluginCommandModule {
-  public void configureCommands() {
-    
+  @Override
+  protected void configureCommands() {
     command("gitlog").to(GitLogCommand.class);
   }
 }

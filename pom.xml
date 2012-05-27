@@ -25,7 +25,7 @@ limitations under the License.
   <version>0.1-SNAPSHOT</version>
   <properties>
      <Gerrit-ApiType>plugin</Gerrit-ApiType>
-     <Gerrit-ApiVersion>2.4-rc0-244-gdbd1acb</Gerrit-ApiVersion>
+     <Gerrit-ApiVersion>2.5-SNAPSHOT</Gerrit-ApiVersion>
      <JavaTuplesVersion>1.2</JavaTuplesVersion>
   </properties>
   <name>Git log Gerrit Plugin</name>
@@ -40,7 +40,6 @@ limitations under the License.
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-compiler-plugin</artifactId>
-        <version>2.3.2</version>
         <configuration>
           <source>1.6</source>
           <target>1.6</target>
@@ -50,13 +49,12 @@ limitations under the License.
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-jar-plugin</artifactId>
-        <version>2.4</version>
         <configuration>
           <archive>
             <manifestEntries>
               <Gerrit-Plugin>gitlog</Gerrit-Plugin>
               <Gerrit-SshModule>com.google.gerrit.plugins.GitLogCommandModule</Gerrit-SshModule>
-              <Gerrit-Version>${Gerrit-ApiVersion}</Gerrit-Version>
+              <Gerrit-ApiVersion>${Gerrit-ApiVersion}</Gerrit-ApiVersion>
             </manifestEntries>
           </archive>
         </configuration>
@@ -67,7 +65,7 @@ limitations under the License.
   <dependencies>
     <dependency>
       <groupId>com.google.gerrit</groupId>
-      <artifactId>gerrit-${Gerrit-ApiType}-api</artifactId>
+      <artifactId>gerrit-plugin-api</artifactId>
       <version>${Gerrit-ApiVersion}</version>
     </dependency>
 
