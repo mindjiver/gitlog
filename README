@@ -1,4 +1,9 @@
 Simple git log plugin for Gerrit.
 
-Gerrit 2.5-SNAPSHOT has support for plugins, this is my little attempt
-of working on a a "git log" plugin until it is ready to be shared.
+The upcoming 2.5 release of Gerrit will have support for plugins, this
+is a small attempt of introducing "git log" plugin.
+
+Main use case is for teams that need to data mine the git repositories
+maintained by Gerrit in an easy way. Especially if you have big
+repositories where it is not feasible to clone them. 
+
