@@ -14,7 +14,7 @@
 
 package com.google.gerrit.plugins;
 
-import com.google.gerrit.sshd.commands.PluginCommandModule;
+import com.google.gerrit.sshd.PluginCommandModule;
 
 public class GitLogCommandModule extends PluginCommandModule {
   public void configureCommands() {
