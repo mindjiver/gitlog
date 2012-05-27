@@ -18,10 +18,8 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.regex.Pattern;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.LogCommand;
-import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.PersonIdent;
 import org.eclipse.jgit.lib.Repository;
@@ -33,25 +31,25 @@ import com.google.gerrit.server.query.change.QueryProcessor.OutputFormat;
 import com.google.gerrit.sshd.SshCommand;
 import com.google.gson.Gson;
 import com.google.inject.Inject;
-import org.kohsuke.args4j.Argument;
 import org.kohsuke.args4j.Option;
+import org.kohsuke.args4j.Argument;
 
 public final class GitLogCommand extends SshCommand {
 
   @Argument(usage = "name of project")
   private String project = null;
   
-  @Option(name = "--from", usage = "commit to show history from")
+  @Option(name = "--from", usage = "commit to show history from.")
   private String from = null;
 
-  @Option(name = "--to", usage = "commit to show history to")
+  @Option(name = "--to", usage = "commit to show history to, default is HEAD.")
   private String to = null;
   
   @SuppressWarnings("unused")
-  @Option(name = "--include-notes", usage = "include git notes in log")
+  @Option(name = "--include-notes", usage = "include git notes in log.")
   private Boolean showNotes = false;
   
-  @Option(name = "--format", metaVar = "FMT", usage = "Output display format")
+  @Option(name = "--format", metaVar = "FMT", usage = "Output display format.")
   private QueryProcessor.OutputFormat format = OutputFormat.TEXT;
     
   @Inject
@@ -59,6 +57,8 @@ public final class GitLogCommand extends SshCommand {
     
   @Override
   public void run() throws UnloggedFailure, Failure, Exception {
+   
+    Repository repository = null;
     
     if (this.project == null) {
       stdout.print("No project specified.\n");
@@ -67,82 +67,69 @@ public final class GitLogCommand extends SshCommand {
     
     Project.NameKey project = Project.NameKey.parse(this.project);
     
-    if (! repoManager.list().contains(project)) {
+    if (repoManager.list().contains(project)) {
+      repository = repoManager.openRepository(project);
+    } else {
       stdout.print("No project called " + this.project + " exists.\n");
       return;
     }
-       
-    if (this.from == null || this.to == null) {
-      stdout.print("Nothing to show log between.\n");
+
+    if (this.to == null) {
+      this.to = "HEAD";
+    }
+    ObjectId to = repository.resolve(this.to);
+    if (to == null) {
+      stdout.print("Nothing to show log to.\n");
       return;
     }
 
-    Repository repository = null;
-    Git g = null;
-       
-    try {
-      repository = repoManager.openRepository(project);
-      g = Git.open(repository.getDirectory());   
-      
-      Map<String, Ref> refs = repository.getAllRefs();
-      Map<String, ObjectId> list = new HashMap<String, ObjectId>();
-      
-      LogCommand log = g.log();    
-
-      list.put(this.from, null);
-      list.put(this.to, null);
-
-      Pattern sha1 = Pattern.compile("[0-9a-fA-F]{40}");
-      
-      for(String s: list.keySet()) {
-        if (sha1.matcher(s).matches()) {
-          list.put(s, ObjectId.fromString(s));
-        } else {
-          // not a SHA1, so lets try to find some other reference!
-          if (refs.containsKey(s)) {
-            list.put(s, refs.get(s).getObjectId());
-          } else {
-            stdout.print(s + " does not point to a valid git reference.\n");
-            return;
-          }
-        } 
-      }
-
-      log.addRange(list.get(this.from), list.get(this.to));    
-      ArrayList<Map<String, String>> cmts = new ArrayList<Map<String, String>>();
-      
-      for(RevCommit rev: log.call()) {
-        PersonIdent author = rev.getAuthorIdent();
-        Date date = new Date(rev.getCommitTime());      
-          
-        Map<String, String> c = new HashMap<String, String>(); 
-        c.put("commit", rev.name());
-        c.put("author", author.getName());
-        c.put("email", author.getEmailAddress());
-        c.put("date", date.toString());
-        c.put("message",rev.getFullMessage());
-        
-        cmts.add(c);
-      }
-      
-      StringBuffer msg = new StringBuffer();
-
-      if (this.format == OutputFormat.TEXT) {
-        for (Map<String, String> c: cmts) {
-          msg.append("commit " + c.get("commit") + "\n");
-          msg.append("Author: " + c.get("author") + " " + c.get("email") + "\n");
-          msg.append("Date: " + c.get("date") + "\n\n");
-          msg.append(c.get("message") + "\n");
-        }
-      } else if (this.format == OutputFormat.JSON) {
-        Gson gson = new Gson();
-        msg.append(gson.toJson(cmts));
-      }
-
-      stdout.print(msg + "\n");
-      
-    } finally {
-      repository.close();
+    if (this.from == null) {
+      stdout.print("Nothing to show log from.\n");
+      return;
     }
+    
+    ObjectId from = repository.resolve(this.from);
+    if (from == null) {
+      stdout.print("Nothing to show log from.\n");
+      return;
+    }
+    
+    // IOException here
+    LogCommand log = Git.open(repository.getDirectory()).log();         
+    log.addRange(from, to);    
+    ArrayList<Map<String, String>> cmts = new ArrayList<Map<String, String>>();
+      
+    for(RevCommit rev: log.call()) {
+      PersonIdent author = rev.getAuthorIdent();
+      Date date = new Date(rev.getCommitTime());      
+          
+      Map<String, String> c = new HashMap<String, String>(); 
+      c.put("commit", rev.name());
+      c.put("author", author.getName());
+      c.put("email", author.getEmailAddress());
+      c.put("date", date.toString());
+      c.put("message",rev.getFullMessage());
+        
+      cmts.add(c);
+    }
+      
+    StringBuffer msg = new StringBuffer();
+
+    if (this.format == OutputFormat.TEXT) {
+      for (Map<String, String> c: cmts) {
+        msg.append("commit " + c.get("commit") + "\n");
+        msg.append("Author: " + c.get("author") + " " +
+            c.get("email") + "\n");
+        msg.append("Date: " + c.get("date") + "\n\n");
+        msg.append(c.get("message") + "\n");
+      }
+    } else if (this.format == OutputFormat.JSON) {
+      Gson gson = new Gson();
+      msg.append(gson.toJson(cmts));
+    }
+
+    stdout.print(msg + "\n");
+      
+    repository.close();
   }
 }
