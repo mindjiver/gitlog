@@ -33,17 +33,17 @@ import com.google.gson.Gson;
 import com.google.inject.Inject;
 import org.kohsuke.args4j.Option;
 import org.kohsuke.args4j.Argument;
+import org.javatuples.Pair;
 
 public final class GitLogCommand extends SshCommand {
 
-  @Argument(usage = "name of project")
-  private String project = null;
+  @Argument(usage = "Range of revisions. Could be specified as " +
+  					"one commit(sha1), range of commits(sha1..sha1) " +
+  					"or any other git reference to commits")
+  private String input = null;
   
-  @Option(name = "--from", usage = "commit to show history from.")
-  private String from = null;
-
-  @Option(name = "--to", usage = "commit to show history to, default is HEAD.")
-  private String to = null;
+  @Option(name = "--project", usage = "Name of the project (repository)")
+  private String project = null;
   
   @SuppressWarnings("unused")
   @Option(name = "--include-notes", usage = "include git notes in log.")
@@ -57,46 +57,69 @@ public final class GitLogCommand extends SshCommand {
     
   @Override
   public void run() throws UnloggedFailure, Failure, Exception {
-   
-    Repository repository = null;
-    
+
+    //Check that project was specified
     if (this.project == null) {
-      stdout.print("No project specified.\n");
+      stdout.print("--project argument is empty. This argument is mandatory.\n");
       return;
     }
     
     Project.NameKey project = Project.NameKey.parse(this.project);
+
+    //Check that project exists
+    if ( ! repoManager.list().contains(project)) {
+        stdout.print("No project called " + this.project + " exists.\n");
+    }
     
-    if (repoManager.list().contains(project)) {
-      repository = repoManager.openRepository(project);
-    } else {
-      stdout.print("No project called " + this.project + " exists.\n");
-      return;
+    //Get repository associated with this project name
+    Repository repository = repoManager.openRepository(project);
+    
+    // TODO. IOException here
+    LogCommand log = Git.open(repository.getDirectory()).log();         
+
+    //Parse provided input to get range of revisions
+    Pair<String, String> range = GitLogInputParser.parse(input);
+
+    //If "from" and "to" revisions are null then it means that
+    //we got faulty input and we need to notify user about it
+    if (range.getValue0() ==  null && range.getValue1() == null) {
+    	stdout.print("Can't parse provided range of versions.\n");
+        return;
     }
 
-    if (this.to == null) {
-      this.to = "HEAD";
+    //If "to" value is null then it means that we have internal problem
+    //with input parser because such situation should never happen
+    if (range.getValue1() == null) {
+    	stdout.print("Provided range of versions was parsed incorrectly" +
+    				 " due to inernal error.\n");
+        return;
     }
-    ObjectId to = repository.resolve(this.to);
+    
+    //Check "to" revision that it is exists in repository
+    ObjectId to = repository.resolve(range.getValue1());
     if (to == null) {
+      //TODO. Rewrite message to be more descriptive
       stdout.print("Nothing to show log to.\n");
       return;
     }
-
-    if (this.from == null) {
-      stdout.print("Nothing to show log from.\n");
-      return;
+    
+    //If "from" revision wasn't specified, i.e. is null then we
+    //need to take initial commit as "from" revision
+    if (range.getValue0() !=  null) {
+    	log.add(to); 
+    } else {
+        //"from" revision was specified but we need to check
+        //that this revision is presented in repository
+    	ObjectId from = repository.resolve(range.getValue0());
+        if (from == null) {
+          //TODO. Rewrite message to be more descriptive
+          stdout.print("Nothing to show log from.\n");
+          return;
+        }
+        //Specify "from" and "to" revisions as range for log command 
+        log.addRange(from, to);
     }
     
-    ObjectId from = repository.resolve(this.from);
-    if (from == null) {
-      stdout.print("Nothing to show log from.\n");
-      return;
-    }
-    
-    // IOException here
-    LogCommand log = Git.open(repository.getDirectory()).log();         
-    log.addRange(from, to);    
     ArrayList<Map<String, String>> cmts = new ArrayList<Map<String, String>>();
       
     for(RevCommit rev: log.call()) {
