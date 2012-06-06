@@ -26,6 +26,7 @@ limitations under the License.
   <properties>
      <Gerrit-ApiType>plugin</Gerrit-ApiType>
      <Gerrit-ApiVersion>2.4-rc0-244-gdbd1acb</Gerrit-ApiVersion>
+     <JavaTuplesVersion>1.2</JavaTuplesVersion>
   </properties>
   <name>Git log Gerrit Plugin</name>
   <url>https://gerrit-review.googlesource.com</url>
@@ -68,6 +69,20 @@ limitations under the License.
       <groupId>com.google.gerrit</groupId>
       <artifactId>gerrit-${Gerrit-ApiType}-api</artifactId>
       <version>${Gerrit-ApiVersion}</version>
+    </dependency>
+
+    <dependency>
+      <groupId>org.javatuples</groupId>
+      <artifactId>javatuples</artifactId>
+      <version>${JavaTuplesVersion}</version>
+      <scope>compile</scope>
+    </dependency>
+
+    <dependency>
+      <groupId>junit</groupId>
+      <artifactId>junit</artifactId>
+      <version>4.8.1</version>
+      <scope>test</scope>
     </dependency>
   </dependencies>
 
