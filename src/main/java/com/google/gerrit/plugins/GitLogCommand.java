@@ -55,10 +55,15 @@ public final class GitLogCommand extends SshCommand {
   @Option(name = "--format", metaVar = "FMT", usage = "Output display format.")
   private final QueryProcessor.OutputFormat format = OutputFormat.TEXT;
 
+  //TODO: change this name. Also, we will print all commits, so maybe we
+  // should not have this as an argument at all?
+  @Option(name = "--numbers", usage = "Maximum number of commits to display.")
+  private int maxCommits = GitLogCommand.MAX_COMMITS;
+
   @Inject
   private GitRepositoryManager repoManager;
 
-  public final static int MAX_COMMITS = 100;
+  public final static int MAX_COMMITS = 250;
 
   @Override
   public void run() throws UnloggedFailure, Failure, Exception {
@@ -67,6 +72,10 @@ public final class GitLogCommand extends SshCommand {
     if (this.project == null) {
       stdout.print("--project argument is empty. This argument is mandatory.\n");
       return;
+    }
+
+    if (this.maxCommits > GitLogCommand.MAX_COMMITS) {
+      this.maxCommits = GitLogCommand.MAX_COMMITS;
     }
 
     this.project.replace(".git", "");
@@ -150,9 +159,10 @@ public final class GitLogCommand extends SshCommand {
          *
          * TODO: This breaks JSON output, how to handle?
          */
-        if (n >= GitLogCommand.MAX_COMMITS) {
+        if (n >= this.maxCommits) {
           this.commitPrinter(this.format, cmts);
           cmts.clear();
+          n = 0;
         }
         n++;
 
@@ -160,8 +170,6 @@ public final class GitLogCommand extends SshCommand {
 
     } catch (IOException ioe) {
       ioe.printStackTrace();
-    } catch (OutOfMemoryError oome) {
-      oome.printStackTrace();
     } finally {
       repository.close();
     }
