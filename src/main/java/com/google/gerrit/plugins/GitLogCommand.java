@@ -64,11 +64,13 @@ public final class GitLogCommand extends SshCommand {
       return;
     }
     
+    this.project.replace(".git", "");
     Project.NameKey project = Project.NameKey.parse(this.project);
 
     //Check that project exists
     if ( ! repoManager.list().contains(project)) {
         stdout.print("No project called " + this.project + " exists.\n");
+        return;
     }
     
     //Get repository associated with this project name
@@ -105,7 +107,7 @@ public final class GitLogCommand extends SshCommand {
     
     //If "from" revision wasn't specified, i.e. is null then we
     //need to take initial commit as "from" revision
-    if (range.getValue0() !=  null) {
+    if (range.getValue0() != null) {
     	log.add(to); 
     } else {
         //"from" revision was specified but we need to check
@@ -132,7 +134,7 @@ public final class GitLogCommand extends SshCommand {
       c.put("email", author.getEmailAddress());
       c.put("date", date.toString());
       c.put("message",rev.getFullMessage());
-        
+
       cmts.add(c);
     }
       
@@ -152,7 +154,7 @@ public final class GitLogCommand extends SshCommand {
     }
 
     stdout.print(msg + "\n");
-      
+
     repository.close();
   }
 }
