@@ -46,7 +46,7 @@ public final class GitLogCommand extends SshCommand {
   private final String input = null;
 
   @Option(name = "--project", usage = "Name of the project (repository)")
-  private final String project = null;
+  private String projectName = null;
 
   @SuppressWarnings("unused")
   @Option(name = "--include-notes", usage = "include git notes in log.")
@@ -69,7 +69,7 @@ public final class GitLogCommand extends SshCommand {
   public void run() throws UnloggedFailure, Failure, Exception {
 
     //Check that project was specified
-    if (this.project == null) {
+    if (projectName == null) {
       stdout.print("--project argument is empty. This argument is mandatory.\n");
       return;
     }
@@ -78,12 +78,14 @@ public final class GitLogCommand extends SshCommand {
       this.maxCommits = GitLogCommand.MAX_COMMITS;
     }
 
-    this.project.replace(".git", "");
-    Project.NameKey project = Project.NameKey.parse(this.project);
+    if (projectName.endsWith("git")) {
+      projectName = projectName.substring(0, projectName.length() - 4);
+    }
+    Project.NameKey project = Project.NameKey.parse(projectName);
 
     //Check that project exists
     if ( ! repoManager.list().contains(project)) {
-        stdout.print("No project called " + this.project + " exists.\n");
+        stdout.print("No project called " + projectName + " exists.\n");
         return;
     }
 

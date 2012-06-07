@@ -13,8 +13,9 @@
 // limitations under the License.
 
 package com.google.gerrit.plugins;
-import org.javatuples.Pair;
 import java.util.regex.Pattern;
+
+import org.javatuples.Pair;
 
 public final class GitLogInputParser {
 	public static Pair<String,String> parse(String argv) {
@@ -25,18 +26,18 @@ public final class GitLogInputParser {
 	String isControlCharacters = "(.*)(\\p{Cntrl})(.*)";
 
 	//Return empty tuple if input contains spaces or control symbols
-	if (Pattern.matches(isEmptyCharacters, argv) || 
+	if (Pattern.matches(isEmptyCharacters, argv) ||
 	    Pattern.matches(isControlCharacters, argv)) {
 		return Pair.with(null, null);
 	}
-	
+
 	//Return empty tuple if first or last symbols of the
 	//input string is separator
-	if (Pattern.matches(isSeparatorFirst, argv) || 
+	if (Pattern.matches(isSeparatorFirst, argv) ||
 	    Pattern.matches(isSeparatorLast, argv)) {
 		return Pair.with(null, null);
 	}
-	
+
 	//If input line is correctly formed range of revisions
 	if (Pattern.matches(isCorrectRange, argv)) {
 	    //then split line into to revisions using separator
@@ -50,10 +51,10 @@ public final class GitLogInputParser {
 		} else {
 			return Pair.with(null, null);
 		}
-	}	
-	
+	}
+
 	//if manage to get here then we assume that input line is only one
-	//revision and return only "to" values, "from" value is empty in this case  
+	//revision and return only "to" values, "from" value is empty in this case
 	return Pair.with(null, argv);
 	}
 }
