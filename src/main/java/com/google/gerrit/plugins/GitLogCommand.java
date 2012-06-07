@@ -14,16 +14,22 @@
 
 package com.google.gerrit.plugins;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
+
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.LogCommand;
 import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.PersonIdent;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.revwalk.RevCommit;
+import org.javatuples.Pair;
+import org.kohsuke.args4j.Argument;
+import org.kohsuke.args4j.Option;
+
 import com.google.gerrit.reviewdb.client.Project;
 import com.google.gerrit.server.git.GitRepositoryManager;
 import com.google.gerrit.server.query.change.QueryProcessor;
@@ -31,30 +37,29 @@ import com.google.gerrit.server.query.change.QueryProcessor.OutputFormat;
 import com.google.gerrit.sshd.SshCommand;
 import com.google.gson.Gson;
 import com.google.inject.Inject;
-import org.kohsuke.args4j.Option;
-import org.kohsuke.args4j.Argument;
-import org.javatuples.Pair;
 
 public final class GitLogCommand extends SshCommand {
 
   @Argument(usage = "Range of revisions. Could be specified as " +
   					"one commit(sha1), range of commits(sha1..sha1) " +
   					"or any other git reference to commits")
-  private String input = null;
-  
+  private final String input = null;
+
   @Option(name = "--project", usage = "Name of the project (repository)")
-  private String project = null;
-  
+  private final String project = null;
+
   @SuppressWarnings("unused")
   @Option(name = "--include-notes", usage = "include git notes in log.")
-  private Boolean showNotes = false;
-  
+  private final Boolean showNotes = false;
+
   @Option(name = "--format", metaVar = "FMT", usage = "Output display format.")
-  private QueryProcessor.OutputFormat format = OutputFormat.TEXT;
-    
+  private final QueryProcessor.OutputFormat format = OutputFormat.TEXT;
+
   @Inject
   private GitRepositoryManager repoManager;
-    
+
+  public final static int MAX_COMMITS = 100;
+
   @Override
   public void run() throws UnloggedFailure, Failure, Exception {
 
@@ -63,7 +68,7 @@ public final class GitLogCommand extends SshCommand {
       stdout.print("--project argument is empty. This argument is mandatory.\n");
       return;
     }
-    
+
     this.project.replace(".git", "");
     Project.NameKey project = Project.NameKey.parse(this.project);
 
@@ -72,72 +77,99 @@ public final class GitLogCommand extends SshCommand {
         stdout.print("No project called " + this.project + " exists.\n");
         return;
     }
-    
-    //Get repository associated with this project name
-    Repository repository = repoManager.openRepository(project);
-    
-    // TODO. IOException here
-    LogCommand log = Git.open(repository.getDirectory()).log();         
 
-    //Parse provided input to get range of revisions
-    Pair<String, String> range = GitLogInputParser.parse(input);
+    Repository repository = null;
+    try {
 
-    //If "from" and "to" revisions are null then it means that
-    //we got faulty input and we need to notify user about it
-    if (range.getValue0() ==  null && range.getValue1() == null) {
-    	stdout.print("Can't parse provided range of versions.\n");
+      //Get repository associated with this project name
+      repository = repoManager.openRepository(project);
+
+      LogCommand log = Git.open(repository.getDirectory()).log();
+
+      //Parse provided input to get range of revisions
+      Pair<String, String> range = GitLogInputParser.parse(input);
+
+      //If "from" and "to" revisions are null then it means that
+      //we got faulty input and we need to notify user about it
+      if (range.getValue0() ==  null && range.getValue1() == null) {
+        stdout.print("Can't parse provided range of versions.\n");
         return;
-    }
+      }
 
-    //If "to" value is null then it means that we have internal problem
-    //with input parser because such situation should never happen
-    if (range.getValue1() == null) {
-    	stdout.print("Provided range of versions was parsed incorrectly" +
-    				 " due to inernal error.\n");
+      //If "to" value is null then it means that we have internal problem
+      //with input parser because such situation should never happen
+      if (range.getValue1() == null) {
+        stdout.print("Provided range of versions was parsed incorrectly" +
+            " due to inernal error.\n");
+          return;
+      }
+
+      //Check "to" revision that it is exists in repository
+      ObjectId to = repository.resolve(range.getValue1());
+      if (to == null) {
+        //TODO: Rewrite message to be more descriptive
+        stdout.print("Nothing to show log to.\n");
         return;
-    }
-    
-    //Check "to" revision that it is exists in repository
-    ObjectId to = repository.resolve(range.getValue1());
-    if (to == null) {
-      //TODO. Rewrite message to be more descriptive
-      stdout.print("Nothing to show log to.\n");
-      return;
-    }
-    
-    //If "from" revision wasn't specified, i.e. is null then we
-    //need to take initial commit as "from" revision
-    if (range.getValue0() != null) {
-    	log.add(to); 
-    } else {
+      }
+
+      //If "from" revision wasn't specified, i.e. is null then we
+      //need to take initial commit as "from" revision
+      if (range.getValue0() != null) {
+        log.add(to);
+      } else {
         //"from" revision was specified but we need to check
         //that this revision is presented in repository
-    	ObjectId from = repository.resolve(range.getValue0());
+        ObjectId from = repository.resolve(range.getValue0());
         if (from == null) {
-          //TODO. Rewrite message to be more descriptive
+          //TODO: Rewrite message to be more descriptive
           stdout.print("Nothing to show log from.\n");
           return;
         }
-        //Specify "from" and "to" revisions as range for log command 
+        //Specify "from" and "to" revisions as range for log command
         log.addRange(from, to);
-    }
-    
-    ArrayList<Map<String, String>> cmts = new ArrayList<Map<String, String>>();
-      
-    for(RevCommit rev: log.call()) {
-      PersonIdent author = rev.getAuthorIdent();
-      Date date = new Date(rev.getCommitTime());      
-          
-      Map<String, String> c = new HashMap<String, String>(); 
-      c.put("commit", rev.name());
-      c.put("author", author.getName());
-      c.put("email", author.getEmailAddress());
-      c.put("date", date.toString());
-      c.put("message",rev.getFullMessage());
+      }
 
-      cmts.add(c);
+      ArrayList<Map<String, String>> cmts = new ArrayList<Map<String, String>>();
+
+      int n = 0;
+
+      for(RevCommit rev: log.call()) {
+        PersonIdent author = rev.getAuthorIdent();
+        Date date = new Date(rev.getCommitTime());
+
+        Map<String, String> c = new HashMap<String, String>();
+        c.put("commit", rev.name());
+        c.put("author", author.getName());
+        c.put("email", author.getEmailAddress());
+        c.put("date", date.toString());
+        c.put("message",rev.getFullMessage());
+        cmts.add(c);
+
+        /* To avoid OutOfMemoryExceptions we only print a maximum of
+         * MAX_COMMITS commits before emptying the ArrayList.
+         *
+         * TODO: This breaks JSON output, how to handle?
+         */
+        if (n >= GitLogCommand.MAX_COMMITS) {
+          this.commitPrinter(this.format, cmts);
+          cmts.clear();
+        }
+        n++;
+
+      }
+
+    } catch (IOException ioe) {
+      ioe.printStackTrace();
+    } catch (OutOfMemoryError oome) {
+      oome.printStackTrace();
+    } finally {
+      repository.close();
     }
-      
+  }
+
+  private void commitPrinter(QueryProcessor.OutputFormat format,
+      ArrayList<Map<String, String>> cmts) {
+
     StringBuffer msg = new StringBuffer();
 
     if (this.format == OutputFormat.TEXT) {
@@ -154,7 +186,5 @@ public final class GitLogCommand extends SshCommand {
     }
 
     stdout.print(msg + "\n");
-
-    repository.close();
   }
 }
