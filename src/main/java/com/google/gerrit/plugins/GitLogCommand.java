@@ -90,6 +90,11 @@ public final class GitLogCommand extends SshCommand {
         return;
     }
 
+    if (input == null) {
+      stdout.print("Nothing to show log between, please specify a range of commits.\n");
+      return;
+    }
+
     Repository repository = null;
     try {
 
@@ -103,7 +108,7 @@ public final class GitLogCommand extends SshCommand {
 
       //If "from" and "to" revisions are null then it means that
       //we got faulty input and we need to notify user about it
-      if (range.getValue0() ==  null && range.getValue1() == null) {
+      if (range.getValue0() == null && range.getValue1() == null) {
         stdout.print("Can't parse provided range of versions.\n");
         return;
       }
@@ -112,7 +117,7 @@ public final class GitLogCommand extends SshCommand {
       //with input parser because such situation should never happen
       if (range.getValue1() == null) {
         stdout.print("Provided range of versions was parsed incorrectly" +
-            " due to inernal error.\n");
+            " due to internal error.\n");
           return;
       }
 
