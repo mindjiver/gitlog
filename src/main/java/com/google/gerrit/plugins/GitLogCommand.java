@@ -131,7 +131,8 @@ public final class GitLogCommand extends SshCommand {
 
       //If "from" revision wasn't specified, i.e. is null then we
       //need to take initial commit as "from" revision
-      if (range.getValue0() != null) {
+      if (range.getValue0() == null) {
+        stdout.print(to.name() + "\n");
         log.add(to);
       } else {
         //"from" revision was specified but we need to check
@@ -142,6 +143,7 @@ public final class GitLogCommand extends SshCommand {
           stdout.print("Nothing to show log from.\n");
           return;
         }
+
         //Specify "from" and "to" revisions as range for log command
         log.addRange(from, to);
       }
@@ -173,11 +175,16 @@ public final class GitLogCommand extends SshCommand {
           n = 0;
         }
         n++;
-
       }
+
+      this.commitPrinter(this.format, cmts);
 
     } catch (IOException ioe) {
       ioe.printStackTrace();
+      stdout.print("Got ioe! :[\n");
+    } catch (NullPointerException npe) {
+      npe.printStackTrace();
+      stdout.print("Got npe! :[\n");
     } finally {
       repository.close();
     }
