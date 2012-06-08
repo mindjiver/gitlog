@@ -132,7 +132,6 @@ public final class GitLogCommand extends SshCommand {
       //If "from" revision wasn't specified, i.e. is null then we
       //need to take initial commit as "from" revision
       if (range.getValue0() == null) {
-        stdout.print(to.name() + "\n");
         log.add(to);
       } else {
         //"from" revision was specified but we need to check
