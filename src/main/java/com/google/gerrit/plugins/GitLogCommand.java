@@ -78,9 +78,10 @@ public final class GitLogCommand extends SshCommand {
       this.maxCommits = GitLogCommand.MAX_COMMITS;
     }
 
-    if (projectName.endsWith("git")) {
+    if (projectName.endsWith(".git")) {
       projectName = projectName.substring(0, projectName.length() - 4);
     }
+
     Project.NameKey project = Project.NameKey.parse(projectName);
 
     //Check that project exists
