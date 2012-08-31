@@ -153,7 +153,10 @@ public final class GitLogCommand extends SshCommand {
 
       for(RevCommit rev: log.call()) {
         PersonIdent author = rev.getAuthorIdent();
-        Date date = new Date(rev.getCommitTime());
+	// getCommitTime returns number of seconds since the epoch,
+	// Date expects it in milliseconds. Force long to avoid
+	// integer overflow.
+        Date date = new Date(rev.getCommitTime() * 1000L);
 
         Map<String, String> c = new HashMap<String, String>();
         c.put("commit", rev.name());
