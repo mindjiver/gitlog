@@ -182,10 +182,8 @@ public final class GitLogCommand extends SshCommand {
 
     } catch (IOException ioe) {
       ioe.printStackTrace();
-      stdout.print("Got ioe! :[\n");
     } catch (NullPointerException npe) {
       npe.printStackTrace();
-      stdout.print("Got npe! :[\n");
     } finally {
       repository.close();
     }
