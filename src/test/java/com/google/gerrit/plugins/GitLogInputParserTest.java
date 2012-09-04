@@ -19,57 +19,57 @@ import org.javatuples.Pair;
 
 public class GitLogInputParserTest {
 
-	@Test
-	public void RangeOfValuesTest() {
-		Assert.assertEquals(Pair.with("from", "to"),
-							GitLogInputParser.parse("from..to"));
-	}
+  @Test
+  public void RangeOfValuesTest() {
+    Assert.assertEquals(Pair.with("from", "to"),
+        GitLogInputParser.parse("from..to"));
+  }
 
-	@Test
-	public void SingleValueTest() {
-		Assert.assertEquals(Pair.with(null,"to"), 
-							GitLogInputParser.parse("to"));
-	}
-	
-	@Test
-	public void SpacesTest() {
-		Assert.assertEquals(Pair.with(null, null), 
-							GitLogInputParser.parse("from to"));
-	}
-	
-	@Test
-	public void ControlSymbolsTest() {
-		Assert.assertEquals(Pair.with(null, null), 
-							GitLogInputParser.parse("from..to\n"));
-	}
-	
-	@Test
-	public void MultipleSeparatorTest() {
-		Assert.assertEquals(Pair.with(null, null), 
-							GitLogInputParser.parse("from..to..hell"));
-	}
-	
-	@Test
-	public void SeparatorAtTheBeginningTest() {
-		Assert.assertEquals(Pair.with(null, null), 
-							GitLogInputParser.parse("..from..to"));
-	}
-	
-	@Test
-	public void SeparatorAtTheBeginning2Test() {
-		Assert.assertEquals(Pair.with(null, null),
-							GitLogInputParser.parse("..fromto"));
-	}
-	
-	@Test
-	public void SeparatorAtTheEndTest() {
-		Assert.assertEquals(Pair.with(null, null),
-							GitLogInputParser.parse("from..to.."));
-	}
-	
-	@Test
-	public void SeparatorAtTheEnd2Test() {
-		Assert.assertEquals(Pair.with(null, null),
-							GitLogInputParser.parse("fromto.."));
-	}
+  @Test
+  public void SingleValueTest() {
+    Assert.assertEquals(Pair.with(null,"to"),
+        GitLogInputParser.parse("to"));
+  }
+
+  @Test
+  public void SpacesTest() {
+    Assert.assertEquals(Pair.with(null, null),
+        GitLogInputParser.parse("from to"));
+  }
+
+  @Test
+  public void ControlSymbolsTest() {
+    Assert.assertEquals(Pair.with(null, null),
+        GitLogInputParser.parse("from..to\n"));
+  }
+
+  @Test
+  public void MultipleSeparatorTest() {
+    Assert.assertEquals(Pair.with(null, null),
+        GitLogInputParser.parse("from..to..hell"));
+  }
+
+  @Test
+  public void SeparatorAtTheBeginningTest() {
+    Assert.assertEquals(Pair.with(null, null),
+        GitLogInputParser.parse("..from..to"));
+  }
+
+  @Test
+  public void SeparatorAtTheBeginning2Test() {
+    Assert.assertEquals(Pair.with(null, null),
+        GitLogInputParser.parse("..fromto"));
+  }
+
+  @Test
+  public void SeparatorAtTheEndTest() {
+    Assert.assertEquals(Pair.with(null, null),
+        GitLogInputParser.parse("from..to.."));
+  }
+
+  @Test
+  public void SeparatorAtTheEnd2Test() {
+    Assert.assertEquals(Pair.with(null, null),
+        GitLogInputParser.parse("fromto.."));
+  }
 }
