@@ -41,8 +41,8 @@ import com.google.inject.Inject;
 public final class GitLogCommand extends SshCommand {
 
   @Argument(usage = "Range of revisions. Could be specified as " +
-                    "one commit(sha1), range of commits(sha1..sha1) " +
-                    "or any other git reference to commits.")
+      "one commit(sha1), range of commits(sha1..sha1) " +
+      "or any other git reference to commits.")
   private final String input = null;
 
   @Option(name = "--project", usage = "Name of the project (repository)")
@@ -86,8 +86,8 @@ public final class GitLogCommand extends SshCommand {
 
     //Check that project exists
     if ( ! repoManager.list().contains(project)) {
-        stdout.print("No project called " + projectName + " exists.\n");
-        return;
+      stdout.print("No project called " + projectName + " exists.\n");
+      return;
     }
 
     if (input == null) {
@@ -117,8 +117,8 @@ public final class GitLogCommand extends SshCommand {
       //with input parser because such situation should never happen
       if (range.getValue1() == null) {
         stdout.print("Provided range of versions was parsed incorrectly" +
-                      " due to internal error.\n");
-          return;
+            " due to internal error.\n");
+        return;
       }
 
       //Check "to" revision that it is exists in repository

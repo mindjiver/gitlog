@@ -18,43 +18,43 @@ import java.util.regex.Pattern;
 import org.javatuples.Pair;
 
 public final class GitLogInputParser {
-	public static Pair<String,String> parse(String argv) {
-	String isCorrectRange = "^(.+?)\\.{2}(.+?)$";
-	String isSeparatorFirst = "^\\.{2}(.+?)$";
-	String isSeparatorLast = "^(.+?)\\.{2}$";
-	String isEmptyCharacters = "(.*)(\\p{Space})(.*)";
-	String isControlCharacters = "(.*)(\\p{Cntrl})(.*)";
+  public static Pair<String,String> parse(String argv) {
+    String isCorrectRange = "^(.+?)\\.{2}(.+?)$";
+    String isSeparatorFirst = "^\\.{2}(.+?)$";
+    String isSeparatorLast = "^(.+?)\\.{2}$";
+    String isEmptyCharacters = "(.*)(\\p{Space})(.*)";
+    String isControlCharacters = "(.*)(\\p{Cntrl})(.*)";
 
-	//Return empty tuple if input contains spaces or control symbols
-	if (Pattern.matches(isEmptyCharacters, argv) ||
-	    Pattern.matches(isControlCharacters, argv)) {
-		return Pair.with(null, null);
-	}
+    //Return empty tuple if input contains spaces or control symbols
+    if (Pattern.matches(isEmptyCharacters, argv) ||
+        Pattern.matches(isControlCharacters, argv)) {
+      return Pair.with(null, null);
+    }
 
-	//Return empty tuple if first or last symbols of the
-	//input string is separator
-	if (Pattern.matches(isSeparatorFirst, argv) ||
-	    Pattern.matches(isSeparatorLast, argv)) {
-		return Pair.with(null, null);
-	}
+    //Return empty tuple if first or last symbols of the
+    //input string is separator
+    if (Pattern.matches(isSeparatorFirst, argv) ||
+        Pattern.matches(isSeparatorLast, argv)) {
+      return Pair.with(null, null);
+    }
 
-	//If input line is correctly formed range of revisions
-	if (Pattern.matches(isCorrectRange, argv)) {
-	    //then split line into to revisions using separator
-		String[] values = argv.split("\\.{2}");
-		//In case of one separator we have to get to strings as we expect
-		//but in case of three or more separators we will have larger array
-		//So we need to check resulting array length to sort out incorrect
-		//input strings
-		if ( values.length == 2) {
-			return Pair.with(values[0], values[1]);
-		} else {
-			return Pair.with(null, null);
-		}
-	}
+    //If input line is correctly formed range of revisions
+    if (Pattern.matches(isCorrectRange, argv)) {
+      //then split line into to revisions using separator
+      String[] values = argv.split("\\.{2}");
+      //In case of one separator we have to get to strings as we expect
+      //but in case of three or more separators we will have larger array
+      //So we need to check resulting array length to sort out incorrect
+      //input strings
+      if ( values.length == 2) {
+        return Pair.with(values[0], values[1]);
+      } else {
+        return Pair.with(null, null);
+      }
+    }
 
-	//if manage to get here then we assume that input line is only one
-	//revision and return only "to" values, "from" value is empty in this case
-	return Pair.with(null, argv);
-	}
+    //if manage to get here then we assume that input line is only one
+    //revision and return only "to" values, "from" value is empty in this case
+    return Pair.with(null, argv);
+  }
 }
