@@ -41,8 +41,8 @@ import com.google.inject.Inject;
 public final class GitLogCommand extends SshCommand {
 
   @Argument(usage = "Range of revisions. Could be specified as " +
-  					"one commit(sha1), range of commits(sha1..sha1) " +
-  					"or any other git reference to commits")
+                    "one commit(sha1), range of commits(sha1..sha1) " +
+                    "or any other git reference to commits.")
   private final String input = null;
 
   @Option(name = "--project", usage = "Name of the project (repository)")
@@ -117,15 +117,14 @@ public final class GitLogCommand extends SshCommand {
       //with input parser because such situation should never happen
       if (range.getValue1() == null) {
         stdout.print("Provided range of versions was parsed incorrectly" +
-            " due to internal error.\n");
+                      " due to internal error.\n");
           return;
       }
 
       //Check "to" revision that it is exists in repository
       ObjectId to = repository.resolve(range.getValue1());
       if (to == null) {
-        //TODO: Rewrite message to be more descriptive
-        stdout.print("Nothing to show log to.\n");
+        stdout.print("Could not find object to show log to.\n");
         return;
       }
 
@@ -153,9 +152,9 @@ public final class GitLogCommand extends SshCommand {
 
       for(RevCommit rev: log.call()) {
         PersonIdent author = rev.getAuthorIdent();
-	// getCommitTime returns number of seconds since the epoch,
-	// Date expects it in milliseconds. Force long to avoid
-	// integer overflow.
+        // getCommitTime returns number of seconds since the epoch,
+        // Date expects it in milliseconds. Force long to avoid
+        // integer overflow.
         Date date = new Date(rev.getCommitTime() * 1000L);
 
         Map<String, String> c = new HashMap<String, String>();
