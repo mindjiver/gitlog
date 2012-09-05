@@ -19,11 +19,18 @@ import org.javatuples.Pair;
 
 public final class GitLogInputParser {
   public static Pair<String,String> parse(String argv) {
+    //Regex to match correct range, i.e. from..to
     String isCorrectRange = "^(.+?)\\.{2}(.+?)$";
+    //Regex to match incorrect range with separator in
+    //the beginning of the string, i.e ..fromto
     String isSeparatorFirst = "^\\.{2}(.+?)$";
+    //Regex to match incorrect range with separator in
+    //the end of the string, i.e fromto..
     String isSeparatorLast = "^(.+?)\\.{2}$";
+    //Regex to match spaces in the string
     String isEmptyCharacters = "(.*)(\\p{Space})(.*)";
-    String isControlCharacters = "(.*)(\\p{Cntrl})(.*)";
+    //Regex to match all control symbols except ~ and ^
+    String isControlCharacters = "(.*)[(\\p{Cntrl})&&[^\\~\\^]](.*)";
 
     //Return empty tuple if input contains spaces or control symbols
     if (Pattern.matches(isEmptyCharacters, argv) ||
