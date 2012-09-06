@@ -38,9 +38,33 @@ public class GitLogInputParserTest {
   }
 
   @Test
-  public void ControlSymbolsTest() {
+  public void NotAllowedControlSymbolsTest() {
     Assert.assertEquals(Pair.with(null, null),
         GitLogInputParser.parse("from..to\n"));
+  }
+
+  @Test
+  public void TildeControlSymbolsTest1() {
+    Assert.assertEquals(Pair.with("from", "to~6"),
+        GitLogInputParser.parse("from..to~6"));
+  }
+
+  @Test
+  public void TildeControlSymbolsTest2() {
+    Assert.assertEquals(Pair.with(null, "to~6"),
+        GitLogInputParser.parse("to~6"));
+  }
+
+  @Test
+  public void HatControlSymbolsTest1() {
+    Assert.assertEquals(Pair.with("from", "to^"),
+        GitLogInputParser.parse("from..to^"));
+  }
+
+  @Test
+  public void HatControlSymbolsTest2() {
+    Assert.assertEquals(Pair.with(null, "to^"),
+        GitLogInputParser.parse("to^"));
   }
 
   @Test
