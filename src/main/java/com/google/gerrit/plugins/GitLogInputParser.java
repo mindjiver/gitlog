@@ -62,6 +62,6 @@ public final class GitLogInputParser {
 
     //if manage to get here then we assume that input line is only one
     //revision and return only "to" values, "from" value is empty in this case
-    return Pair.with(null, argv);
+    return Pair.with(argv, null);
   }
 }
