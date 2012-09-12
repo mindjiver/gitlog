@@ -20,12 +20,14 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.eclipse.jgit.api.Git;
-import org.eclipse.jgit.api.LogCommand;
+import org.eclipse.jgit.errors.AmbiguousObjectException;
+import org.eclipse.jgit.errors.IncorrectObjectTypeException;
+import org.eclipse.jgit.errors.RevisionSyntaxException;
 import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.PersonIdent;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.revwalk.RevCommit;
+import org.eclipse.jgit.revwalk.RevWalk;
 import org.javatuples.Pair;
 import org.kohsuke.args4j.Argument;
 import org.kohsuke.args4j.Option;
@@ -67,6 +69,19 @@ public final class GitLogCommand extends SshCommand {
 
   @Override
   public void run() throws UnloggedFailure, Failure, Exception {
+    
+    ObjectId from = null;
+    ObjectId to = null;
+    Repository repository = null;
+    RevCommit rev = null;
+    RevWalk walk = null;
+    Project.NameKey project = null;
+    Pair<String, String> range = null;
+    ArrayList<Map<String, String>> cmts = new ArrayList<Map<String, String>>();
+    
+    if (this.maxCommits > GitLogCommand.MAX_COMMITS) {
+      this.maxCommits = GitLogCommand.MAX_COMMITS;
+    }
 
     //Check that project was specified
     if (projectName == null) {
@@ -74,121 +89,149 @@ public final class GitLogCommand extends SshCommand {
       return;
     }
 
-    if (this.maxCommits > GitLogCommand.MAX_COMMITS) {
-      this.maxCommits = GitLogCommand.MAX_COMMITS;
-    }
-
+    //Cut .git if project name have it
     if (projectName.endsWith(".git")) {
       projectName = projectName.substring(0, projectName.length() - 4);
     }
 
-    Project.NameKey project = Project.NameKey.parse(projectName);
-
+    //Get project object
+    project = Project.NameKey.parse(projectName);
+    
     //Check that project exists
     if ( ! repoManager.list().contains(project)) {
       stdout.print("No project called " + projectName + " exists.\n");
       return;
     }
 
+    repository = repoManager.openRepository(project);
+    walk = new RevWalk(repository);
+    
+    //Check that we have something to parse
     if (input == null) {
       stdout.print("Nothing to show log between, please specify a range of commits.\n");
       return;
     }
 
-    Repository repository = null;
-    try {
+    //Parse provided input to get range of revisions
+    range = GitLogInputParser.parse(input);
 
-      //Get repository associated with this project name
-      repository = repoManager.openRepository(project);
-
-      LogCommand log = Git.open(repository.getDirectory()).log();
-
-      //Parse provided input to get range of revisions
-      Pair<String, String> range = GitLogInputParser.parse(input);
-
-      //If "from" and "to" revisions are null then it means that
-      //we got faulty input and we need to notify user about it
-      if (range.getValue0() == null && range.getValue1() == null) {
-        stdout.print("Can't parse provided range of versions.\n");
-        return;
-      }
-
-      //If "to" value is null then it means that we have internal problem
-      //with input parser because such situation should never happen
-      if (range.getValue1() == null) {
-        stdout.print("Provided range of versions was parsed incorrectly" +
-            " due to internal error.\n");
-        return;
-      }
-
-      //Check "to" revision that it is exists in repository
-      ObjectId to = repository.resolve(range.getValue1());
-      if (to == null) {
-        stdout.print("Could not find object to show log to.\n");
-        return;
-      }
-
-      //If "from" revision wasn't specified, i.e. is null then we
-      //need to take initial commit as "from" revision
-      if (range.getValue0() == null) {
-        log.add(to);
-      } else {
-        //"from" revision was specified but we need to check
-        //that this revision is presented in repository
-        ObjectId from = repository.resolve(range.getValue0());
-        if (from == null) {
-          //TODO: Rewrite message to be more descriptive
-          stdout.print("Nothing to show log from.\n");
-          return;
-        }
-
-        //Specify "from" and "to" revisions as range for log command
-        log.addRange(from, to);
-      }
-
-      ArrayList<Map<String, String>> cmts = new ArrayList<Map<String, String>>();
-
-      int n = 0;
-
-      for(RevCommit rev: log.call()) {
-        PersonIdent author = rev.getAuthorIdent();
-        // getCommitTime returns number of seconds since the epoch,
-        // Date expects it in milliseconds. Force long to avoid
-        // integer overflow.
-        Date date = new Date(rev.getCommitTime() * 1000L);
-
-        Map<String, String> c = new HashMap<String, String>();
-        c.put("commit", rev.name());
-        c.put("author", author.getName());
-        c.put("email", author.getEmailAddress());
-        c.put("date", date.toString());
-        c.put("message",rev.getFullMessage());
-        cmts.add(c);
-
-        /* To avoid OutOfMemoryExceptions we only print a maximum of
-         * MAX_COMMITS commits before emptying the ArrayList.
-         *
-         * TODO: This breaks JSON output, how to handle?
-         */
-        if (n >= this.maxCommits) {
-          this.commitPrinter(this.format, cmts);
-          cmts.clear();
-          n = 0;
-        }
-        n++;
-      }
-
-      this.commitPrinter(this.format, cmts);
-
-    } catch (IOException ioe) {
-      ioe.printStackTrace();
-    } catch (NullPointerException npe) {
-      npe.printStackTrace();
-    } finally {
-      repository.close();
+    //If "from" and "to" revisions are null then it means that
+    //we got faulty input and we need to notify user about it
+    if (range.getValue0() == null && range.getValue1() == null) {
+      stdout.print("Can't parse provided range of versions.\n");
+      return;
     }
+
+    //If "from" value is null then it means that we have internal problem
+    //with input parser because such situation should never happen
+    if (range.getValue0() == null) {
+      stdout.print("Provided range of versions was parsed incorrectly" +
+          " due to internal error.\n");
+      return;
+    }
+
+    //Get "from" commit object
+    try  {
+    from = repository.resolve(range.getValue0());
+    } catch (AmbiguousObjectException e) {
+      stdout.print("Repository contains more than one object which match " +
+      "to the input abbreviation " + range.getValue0() + ":\n" +e.getMessage());
+      return;
+    } catch (IncorrectObjectTypeException e) {
+      stdout.print("Internal error. Types mistmatch during attempt to " +
+      "get objectID for " + range.getValue0() + ":\n" +e.getMessage());
+      return;
+    } catch (RevisionSyntaxException e) {
+      stdout.print("The expression (" + range.getValue0() + ") is not  " + 
+      "supported by this implementation, or does not meet the standard " +
+      " syntax:\n" +e.getMessage());
+      return;
+    } catch (IOException e) {
+      stdout.print("Internal I/O error during attempt to " +
+        "get objectID for " + range.getValue0() + ":\n" +e.getMessage());
+      return;
+    }
+    
+    if (from == null) {
+      stdout.print(range.getValue0() + " not found in the repository " +
+      projectName + "\n");
+      return;
+    }
+    
+    //Get "to" commit object if commit reference is not null 
+    if (range.getValue1() != null) {
+      try  {
+        to = repository.resolve(range.getValue1());
+      } catch (AmbiguousObjectException e) {
+        stdout.print("Repository contains more than one object which match " +
+        "to the input abbreviation " + range.getValue1() + ":\n" +e.getMessage());
+        return;
+      } catch (IncorrectObjectTypeException e) {
+        stdout.print("Internal error. Types mistmatch during attempt to " +
+        "get objectID for " + range.getValue1() + ":\n" +e.getMessage());
+        return;
+      } catch (RevisionSyntaxException e) {
+        stdout.print("The expression (" + range.getValue1() + ") is not  " + 
+        "supported by this implementation, or does not meet the standard " +
+        " syntax:\n" +e.getMessage());
+        return;
+      } catch (IOException e) {
+        stdout.print("Internal I/O error during attempt to " +
+        "get objectID for " + range.getValue1() + ":\n" +e.getMessage());
+        return;
+      }
+      if (to == null) {
+        stdout.print(range.getValue1() + " not found in the repository " +
+        projectName + "\n");
+        return;
+      }
+    }
+
+    if (from == to) {
+      //we asked to show only one commit
+      rev = walk.parseCommit(from);
+      cmts.add(this.revCommitToMap(rev));
+    } else if (from != null && to != null) {
+      //we asked to show log between two commits
+      //we want our search to be inclusive so
+      //first we include "to" into result
+      rev = walk.parseCommit(to);
+      cmts.add(this.revCommitToMap(rev));
+      //Set filter for rev walk. It is important
+      //that we got "to" before this moment,
+      //otherwise it will be filtered out
+      walk.markStart(walk.parseCommit(from));
+      walk.markUninteresting(walk.parseCommit(to));
+      for (RevCommit next : walk) {
+        cmts.add(this.revCommitToMap(next));
+      }
+    } else if (from != null && to == null) {
+      //if we asked to show log from and till the end
+      walk.markStart(walk.parseCommit(from));
+      for (RevCommit next : walk) {
+        cmts.add(this.revCommitToMap(next));
+      }
+    }
+
+    this.commitPrinter(this.format, cmts);
   }
 
+  private Map<String, String> revCommitToMap(RevCommit rev){
+    PersonIdent author = rev.getAuthorIdent();
+    // getCommitTime returns number of seconds since the epoch,
+    // Date expects it in milliseconds. Force long to avoid
+    // integer overflow.
+    Date date = new Date(rev.getCommitTime() * 1000L);
+    
+    Map<String, String> c = new HashMap<String, String>();
+    c.put("commit", rev.name());
+    c.put("author", author.getName());
+    c.put("email", author.getEmailAddress());
+    c.put("date", date.toString());
+    c.put("message",rev.getShortMessage());
+    return c;
+  }
+  
   private void commitPrinter(QueryProcessor.OutputFormat format,
       ArrayList<Map<String, String>> cmts) {
 

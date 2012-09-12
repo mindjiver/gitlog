@@ -27,8 +27,8 @@ public class GitLogInputParserTest {
 
   @Test
   public void SingleValueTest() {
-    Assert.assertEquals(Pair.with(null,"to"),
-        GitLogInputParser.parse("to"));
+    Assert.assertEquals(Pair.with("from",null),
+        GitLogInputParser.parse("from"));
   }
 
   @Test
@@ -51,8 +51,8 @@ public class GitLogInputParserTest {
 
   @Test
   public void TildeControlSymbolsTest2() {
-    Assert.assertEquals(Pair.with(null, "to~6"),
-        GitLogInputParser.parse("to~6"));
+    Assert.assertEquals(Pair.with("from~6", null),
+        GitLogInputParser.parse("from~6"));
   }
 
   @Test
@@ -63,8 +63,8 @@ public class GitLogInputParserTest {
 
   @Test
   public void HatControlSymbolsTest2() {
-    Assert.assertEquals(Pair.with(null, "to^"),
-        GitLogInputParser.parse("to^"));
+    Assert.assertEquals(Pair.with("from^", null),
+        GitLogInputParser.parse("from^"));
   }
 
   @Test
