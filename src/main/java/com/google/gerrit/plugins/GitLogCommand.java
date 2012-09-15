@@ -73,15 +73,15 @@ public final class GitLogCommand extends SshCommand {
     Pair<String, String> range = null;
     ArrayList<Map<String, String>> cmts = new ArrayList<Map<String, String>>();
 
-    // Check that we have something to parse.
-    if (input == null) {
-      stdout.print("Nothing to show log between, please specify a range of commits.\n");
-      return;
-    }
-
     // Check that a project was specified.
     if (projectName == null) {
       stdout.print("--project argument is empty. This argument is mandatory.\n");
+      return;
+    }
+    
+    // Check that we have something to parse.
+    if (input == null) {
+      stdout.print("Nothing to show log between, please specify a range of commits.\n");
       return;
     }
 
@@ -186,10 +186,10 @@ public final class GitLogCommand extends SshCommand {
     } else if (from != null && to != null) {
       /* we asked to show log between two commits
        * we want our search to be inclusive so
-       * first we include "to" into result
+       * first we want to save "to" into result
        */
       rev = walk.parseCommit(to);
-      cmts.add(this.revCommitToMap(rev));
+      Map<String, String> last = this.revCommitToMap(rev);
       /* Set filter for revision walk. It is important
        * that we got "to" before this moment,
        * otherwise it will be filtered out.
@@ -199,6 +199,8 @@ public final class GitLogCommand extends SshCommand {
       for (RevCommit next : walk) {
         cmts.add(this.revCommitToMap(next));
       }
+      // Insert "to" to the end of array
+      cmts.add(last);
     } else if (from != null && to == null) {
       // If we asked to show log for the entire history to the root commit.
       walk.markStart(walk.parseCommit(from));
@@ -210,7 +212,7 @@ public final class GitLogCommand extends SshCommand {
     this.commitPrinter(this.format, cmts);
   }
 
-  private Map<String, String> revCommitToMap(RevCommit rev){
+  private Map<String, String> revCommitToMap(RevCommit rev) {
     PersonIdent author = rev.getAuthorIdent();
     /* getCommitTime returns number of seconds since the epoch,
      * Date expects it in milliseconds. Force long to avoid
@@ -224,6 +226,12 @@ public final class GitLogCommand extends SshCommand {
     c.put("email", author.getEmailAddress());
     c.put("date", date.toString());
     c.put("message",rev.getShortMessage());
+    
+    // Insert info about parents
+    for (RevCommit parent: rev.getParents()) {
+      c.put("parent", parent.name());
+    }
+
     return c;
   }
 
