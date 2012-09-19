@@ -18,7 +18,9 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
+import java.util.Map.Entry;
 
 import org.eclipse.jgit.errors.AmbiguousObjectException;
 import org.eclipse.jgit.errors.IncorrectObjectTypeException;
@@ -42,17 +44,13 @@ import com.google.inject.Inject;
 
 public final class GitLogCommand extends SshCommand {
 
-  @Argument(usage = "Range of revisions. Could be specified as " +
-      "one commit(sha1), range of commits(sha1..sha1) " +
-      "or any other git reference to commits.")
+  @Argument(usage = "Range of revisions. Could be specified as "
+      + "one commit(sha1), range of commits(sha1..sha1) "
+      + "or any other git reference to commits.")
   private final String input = null;
 
   @Option(name = "--project", usage = "Name of the project (repository)")
   private String projectName = null;
-
-  @SuppressWarnings("unused")
-  @Option(name = "--include-notes", usage = "include git notes in log.")
-  private final Boolean showNotes = false;
 
   @Option(name = "--format", metaVar = "FMT", usage = "Output display format.")
   private final QueryProcessor.OutputFormat format = OutputFormat.TEXT;
@@ -75,13 +73,13 @@ public final class GitLogCommand extends SshCommand {
 
     // Check that a project was specified.
     if (projectName == null) {
-      stdout.print("--project argument is empty. This argument is mandatory.\n");
+      this.resultPrinter(this.format, GitLogReturnCode.WRONG_PROJECT_NAME, null);
       return;
     }
-    
+
     // Check that we have something to parse.
     if (input == null) {
-      stdout.print("Nothing to show log between, please specify a range of commits.\n");
+      this.resultPrinter(this.format, GitLogReturnCode.WRONG_RANGE, null);
       return;
     }
 
@@ -92,89 +90,94 @@ public final class GitLogCommand extends SshCommand {
 
     // Check that project/repository exists.
     project = Project.NameKey.parse(projectName);
-    if ( ! repoManager.list().contains(project)) {
-      stdout.print("No project called " + projectName + " exists.\n");
+    if (!repoManager.list().contains(project)) {
+      this.resultPrinter(this.format, GitLogReturnCode.WRONG_PROJECT_NAME, null);
       return;
     }
 
     repository = repoManager.openRepository(project);
     walk = new RevWalk(repository);
-    
+
     // Parse provided input to get range of revisions.
     range = GitLogInputParser.parse(input);
 
-    /* If "from" and "to" revisions are null then it means that
-     * we got faulty input and we need to notify user about it
+    /*
+     * If "from" and "to" revisions are null then it means that we got faulty
+     * input and we need to notify user about it
      */
     if (range.getValue0() == null && range.getValue1() == null) {
-      stdout.print("Can't parse provided range of versions.\n");
+      this.resultPrinter(this.format, GitLogReturnCode.WRONG_RANGE, null);
       return;
     }
 
-    /* If "from" value is null then it means that we have internal problem
-     * with input parser because such situation should never happen
+    /*
+     * If "from" value is null then it means that we have internal problem with
+     * input parser because such situation should never happen
      */
     if (range.getValue0() == null) {
-      stdout.print("Provided range of versions was parsed incorrectly" +
-          " due to internal error.\n");
+      this.resultPrinter(this.format, GitLogReturnCode.INTERNAL_ERROR, null);
       return;
     }
 
     // Get "from" commit object.
-    try  {
+    try {
       from = repository.resolve(range.getValue0());
     } catch (AmbiguousObjectException e) {
-      stdout.print("Repository contains more than one object which match " +
-          "to the input abbreviation " + range.getValue0() + ":\n" +
-          e.getMessage());
+      // Few commits corresponds to provided reference. Return all of them
+      Map<String, String> candidates = new HashMap<String, String>();
+      for (Iterator<ObjectId> iter = e.getCandidates().iterator(); iter
+          .hasNext();) {
+        candidates.put("candidate", iter.next().getName());
+      }
+      cmts.add(candidates);
+      this.resultPrinter(this.format, GitLogReturnCode.AMBIGUOUS_COMMIT_REF,
+          cmts);
       return;
     } catch (IncorrectObjectTypeException e) {
-      stdout.print("Internal error. Types mistmatch during attempt to " +
-          "get objectID for " + range.getValue0() + ":\n" + e.getMessage());
+      this.resultPrinter(this.format, GitLogReturnCode.INTERNAL_ERROR, null);
       return;
     } catch (RevisionSyntaxException e) {
-      stdout.print("The expression (" + range.getValue0() + ") is not  " + 
-          "supported by this implementation, or does not meet the standard " +
-          " syntax:\n" +e.getMessage());
+      this.resultPrinter(this.format, GitLogReturnCode.INTERNAL_ERROR, null);
       return;
     } catch (IOException e) {
-      stdout.print("Internal I/O error during attempt to " +
-          "get objectID for " + range.getValue0() + ":\n" + e.getMessage());
+      this.resultPrinter(this.format, GitLogReturnCode.INTERNAL_ERROR, null);
       return;
     }
 
     if (from == null) {
-      stdout.print(range.getValue0() + " not found in the repository " +
-          projectName + "\n");
+      this.resultPrinter(this.format, GitLogReturnCode.FIRST_REF_NOT_FOUND,
+          null);
       return;
     }
 
     // Get "to" commit object if commit reference is not null.
     if (range.getValue1() != null) {
-      try  {
+      try {
         to = repository.resolve(range.getValue1());
       } catch (AmbiguousObjectException e) {
-        stdout.print("Repository contains more than one object which match " +
-            "to the input abbreviation " + range.getValue1() + ":\n" +
-            e.getMessage());
+        // Few commits corresponds to provided reference. Return all of them
+        Map<String, String> candidates = new HashMap<String, String>();
+        for (Iterator<ObjectId> iter = e.getCandidates().iterator(); iter
+            .hasNext();) {
+          candidates.put("candidate", iter.next().getName());
+        }
+        cmts.add(candidates);
+        this.resultPrinter(this.format, GitLogReturnCode.AMBIGUOUS_COMMIT_REF,
+            cmts);
         return;
       } catch (IncorrectObjectTypeException e) {
-        stdout.print("Internal error. Types mistmatch during attempt to " +
-            "get objectID for " + range.getValue1() + ":\n" + e.getMessage());
+        this.resultPrinter(this.format, GitLogReturnCode.INTERNAL_ERROR, null);
         return;
       } catch (RevisionSyntaxException e) {
-        stdout.print("The expression (" + range.getValue1() + ") is not  " + 
-            "supported by this implementation, or does not meet the standard " +
-            " syntax:\n" + e.getMessage());
+        this.resultPrinter(this.format, GitLogReturnCode.INTERNAL_ERROR, null);
         return;
       } catch (IOException e) {
-        stdout.print("Internal I/O error during attempt to " +
-            "get objectID for " + range.getValue1() + ":\n" + e.getMessage());
+        this.resultPrinter(this.format, GitLogReturnCode.INTERNAL_ERROR, null);
         return;
       }
       if (to == null) {
-        stdout.print(range.getValue1() + " not found in the repository " +
-            projectName + "\n");
+        this.resultPrinter(this.format, GitLogReturnCode.SECOND_REF_NOT_FOUND,
+            null);
         return;
       }
     }
@@ -184,15 +187,15 @@ public final class GitLogCommand extends SshCommand {
       rev = walk.parseCommit(from);
       cmts.add(this.revCommitToMap(rev));
     } else if (from != null && to != null) {
-      /* we asked to show log between two commits
-       * we want our search to be inclusive so
-       * first we want to save "to" into result
+      /*
+       * we asked to show log between two commits we want our search to be
+       * inclusive so first we want to save "to" into result
        */
       rev = walk.parseCommit(to);
       Map<String, String> last = this.revCommitToMap(rev);
-      /* Set filter for revision walk. It is important
-       * that we got "to" before this moment,
-       * otherwise it will be filtered out.
+      /*
+       * Set filter for revision walk. It is important that we got "to" before
+       * this moment, otherwise it will be filtered out.
        */
       walk.markStart(walk.parseCommit(from));
       walk.markUninteresting(walk.parseCommit(to));
@@ -209,14 +212,14 @@ public final class GitLogCommand extends SshCommand {
       }
     }
 
-    this.commitPrinter(this.format, cmts);
+    this.resultPrinter(this.format, GitLogReturnCode.OK, cmts);
   }
 
   private Map<String, String> revCommitToMap(RevCommit rev) {
     PersonIdent author = rev.getAuthorIdent();
-    /* getCommitTime returns number of seconds since the epoch,
-     * Date expects it in milliseconds. Force long to avoid
-     * integer overflow.
+    /*
+     * getCommitTime returns number of seconds since the epoch, Date expects it
+     * in milliseconds. Force long to avoid integer overflow.
      */
     Date date = new Date(rev.getCommitTime() * 1000L);
 
@@ -225,32 +228,49 @@ public final class GitLogCommand extends SshCommand {
     c.put("author", author.getName());
     c.put("email", author.getEmailAddress());
     c.put("date", date.toString());
-    c.put("message",rev.getShortMessage());
-    
+    c.put("message", rev.getFullMessage());
+
     // Insert info about parents
-    for (RevCommit parent: rev.getParents()) {
+    for (RevCommit parent : rev.getParents()) {
       c.put("parent", parent.name());
     }
 
     return c;
   }
 
-  private void commitPrinter(QueryProcessor.OutputFormat format,
-      ArrayList<Map<String, String>> cmts) {
+  private void resultPrinter(QueryProcessor.OutputFormat format,
+      GitLogReturnCode returnCode, ArrayList<Map<String, String>> cmts) {
 
     StringBuffer msg = new StringBuffer();
+    ArrayList<Map<String, String>> result =
+        new ArrayList<Map<String, String>>();
+    Map<String, String> code = new HashMap<String, String>();
+
+    // Insert info about return code
+    code.put("ReturnCode", returnCode.getCodeAsString());
+    code.put("ReturnCodeDescription", returnCode.getDescription());
+    result.add(code);
+
+    // Insert info about a commits if we have some
+    if (cmts != null) {
+      result.addAll(cmts);
+    }
 
     if (this.format == OutputFormat.TEXT) {
-      for (Map<String, String> c: cmts) {
-        msg.append("commit " + c.get("commit") + "\n");
-        msg.append("Author: " + c.get("author") + " " +
-            c.get("email") + "\n");
-        msg.append("Date: " + c.get("date") + "\n\n");
-        msg.append(c.get("message") + "\n");
+      // msg.append("ReturnCode: " + returnCode.getCodeAsString());
+      // msg.append("ReturnCodeDescription: " + returnCode.getDescription());
+      for (Map<String, String> c : result) {
+        Iterator<Entry<String, String>> it = c.entrySet().iterator();
+        while (it.hasNext()) {
+          Map.Entry pairs = (Map.Entry) it.next();
+          msg.append(pairs.getKey() + " : " + pairs.getValue() + "\n");
+          it.remove(); // avoids a ConcurrentModificationException
+        }
       }
     } else if (this.format == OutputFormat.JSON) {
       Gson gson = new Gson();
-      msg.append(gson.toJson(cmts));
+      // Convert to to Json
+      msg.append(gson.toJson(result));
     }
 
     stdout.print(msg + "\n");
