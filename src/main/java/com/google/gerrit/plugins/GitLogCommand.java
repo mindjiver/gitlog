@@ -267,7 +267,7 @@ public final class GitLogCommand extends SshCommand {
       }
     } else if (this.format == OutputFormat.JSON) {
       Gson gson = new Gson();
-      // Convert to to Json
+      // Convert to JSON.
       msg.append(gson.toJson(result));
     }
 
