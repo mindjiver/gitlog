@@ -15,13 +15,14 @@
 package com.google.gerrit.plugins;
 
 public enum GitLogReturnCode {
-  OK(0, "Success"),
-  WRONG_PROJECT_NAME(1, "Can't find repository with given name."), 
-  WRONG_RANGE(2, "Can't parse given range."),
-  FIRST_REF_NOT_FOUND(3, "First commit from given range wasn't found in given repository."),
-  SECOND_REF_NOT_FOUND(4, "Second commit from given range wasn't found in given repository."),
-  AMBIGUOUS_COMMIT_REF(5, "Few commits correspond to provided refernce."),
-  INTERNAL_ERROR(6, "Our bad, please file an issue at https://github.com/mindjiver/gitlog/issues");
+  OK(0, "Success"), 
+  WRONG_PROJECT_NAME(1, "Can not find repository with given name."),
+  WRONG_RANGE(2, "Can not parse given range."),
+  FIRST_REF_NOT_FOUND(3, "First commit from given range was not found in given repository."),
+  SECOND_REF_NOT_FOUND(4, "Second commit from given range was not found in given repository."),
+  AMBIGUOUS_COMMIT_REF(5, "Few commits correspond to provided reference."),
+  INTERNAL_ERROR(6, "Internal error. Our bad, please file an issue at https://github.com/mindjiver/gitlog/issues"),
+  ACCESS_ERROR(7, "Can not read info from repository due to IO problem.");
 
   private final int code;
   private String description;

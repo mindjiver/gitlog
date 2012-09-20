@@ -24,6 +24,7 @@ import java.util.Map.Entry;
 
 import org.eclipse.jgit.errors.AmbiguousObjectException;
 import org.eclipse.jgit.errors.IncorrectObjectTypeException;
+import org.eclipse.jgit.errors.MissingObjectException;
 import org.eclipse.jgit.errors.RevisionSyntaxException;
 import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.PersonIdent;
@@ -138,7 +139,7 @@ public final class GitLogCommand extends SshCommand {
       this.resultPrinter(this.format, GitLogReturnCode.INTERNAL_ERROR, null);
       return;
     } catch (IOException e) {
-      this.resultPrinter(this.format, GitLogReturnCode.INTERNAL_ERROR, null);
+      this.resultPrinter(this.format, GitLogReturnCode.ACCESS_ERROR, null);
       return;
     }
 
@@ -170,7 +171,7 @@ public final class GitLogCommand extends SshCommand {
         this.resultPrinter(this.format, GitLogReturnCode.INTERNAL_ERROR, null);
         return;
       } catch (IOException e) {
-        this.resultPrinter(this.format, GitLogReturnCode.INTERNAL_ERROR, null);
+        this.resultPrinter(this.format, GitLogReturnCode.ACCESS_ERROR, null);
         return;
       }
       if (to == null) {
@@ -182,20 +183,57 @@ public final class GitLogCommand extends SshCommand {
 
     if (from == to) {
       // We asked to show only one commit.
-      rev = walk.parseCommit(from);
+      try {
+        rev = walk.parseCommit(from);
+      } catch (MissingObjectException e) {
+        this.resultPrinter(this.format, GitLogReturnCode.FIRST_REF_NOT_FOUND,
+            null);
+        return;
+      } catch (IncorrectObjectTypeException e) {
+        this.resultPrinter(this.format, GitLogReturnCode.INTERNAL_ERROR, null);
+        return;
+      } catch (IOException e) {
+        this.resultPrinter(this.format, GitLogReturnCode.ACCESS_ERROR, null);
+        return;
+      }
       cmts.add(this.revCommitToMap(rev));
     } else if (from != null && to != null) {
       /*
        * we asked to show log between two commits we want our search to be
        * inclusive so first we want to save "to" into result
        */
-      rev = walk.parseCommit(to);
+      try {
+        rev = walk.parseCommit(to);
+      } catch (MissingObjectException e) {
+        this.resultPrinter(this.format, GitLogReturnCode.SECOND_REF_NOT_FOUND,
+            null);
+        return;
+      } catch (IncorrectObjectTypeException e) {
+        this.resultPrinter(this.format, GitLogReturnCode.INTERNAL_ERROR, null);
+        return;
+      } catch (IOException e) {
+        this.resultPrinter(this.format, GitLogReturnCode.ACCESS_ERROR, null);
+        return;
+      }
       Map<String, String> last = this.revCommitToMap(rev);
       /*
        * Set filter for revision walk. It is important that we got "to" before
        * this moment, otherwise it will be filtered out.
        */
-      walk.markStart(walk.parseCommit(from));
+      try {
+        rev = walk.parseCommit(from);
+      } catch (MissingObjectException e) {
+        this.resultPrinter(this.format, GitLogReturnCode.FIRST_REF_NOT_FOUND,
+            null);
+        return;
+      } catch (IncorrectObjectTypeException e) {
+        this.resultPrinter(this.format, GitLogReturnCode.INTERNAL_ERROR, null);
+        return;
+      } catch (IOException e) {
+        this.resultPrinter(this.format, GitLogReturnCode.ACCESS_ERROR, null);
+        return;
+      }
+
       walk.markUninteresting(walk.parseCommit(to));
       for (RevCommit next : walk) {
         cmts.add(this.revCommitToMap(next));
