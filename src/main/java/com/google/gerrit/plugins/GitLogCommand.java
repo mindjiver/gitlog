@@ -58,8 +58,6 @@ public final class GitLogCommand extends SshCommand {
   @Inject
   private GitRepositoryManager repoManager;
 
-  public final static int MAX_COMMITS = 250;
-
   @Override
   public void run() throws UnloggedFailure, Failure, Exception {
     ObjectId from = null;
