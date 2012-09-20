@@ -21,7 +21,7 @@ public enum GitLogReturnCode {
   FIRST_REF_NOT_FOUND(3, "First commit from given range wasn't found in given repository."),
   SECOND_REF_NOT_FOUND(4, "Second commit from given range wasn't found in given repository."),
   AMBIGUOUS_COMMIT_REF(5, "Few commits correspond to provided refernce."),
-  INTERNAL_ERROR(6, "Our bad, please file a issue at https://github.com/mindjiver/gitlog/issues");
+  INTERNAL_ERROR(6, "Our bad, please file an issue at https://github.com/mindjiver/gitlog/issues");
 
   private final int code;
   private String description;
