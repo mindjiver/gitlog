@@ -22,10 +22,10 @@ limitations under the License.
   <groupId>com.google.gerrit.plugins</groupId>
   <artifactId>gitlog</artifactId>
   <packaging>jar</packaging>
-  <version>2.6</version>
+  <version>1.0-SNAPSHOT</version>
   <properties>
      <Gerrit-ApiType>plugin</Gerrit-ApiType>
-     <Gerrit-ApiVersion>${project.version}</Gerrit-ApiVersion>
+     <Gerrit-ApiVersion>2.6</Gerrit-ApiVersion>
      <JavaTuplesVersion>1.2</JavaTuplesVersion>
   </properties>
   <build>
